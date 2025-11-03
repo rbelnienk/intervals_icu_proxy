@@ -1,5 +1,5 @@
 // File: api/icu/[...path].ts
-export const config = { runtime: 'edge' };
+export const config = { runtime: 'nodejs' };
 
 function toBasic(username: string, password: string) {
   // Edge Runtime hat btoa, aber wir fallbacken robust:
