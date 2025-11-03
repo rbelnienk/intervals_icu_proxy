@@ -1,28 +1,18 @@
-#!/usr/bin/env python3
-import requests
 import base64
-import json
+import requests
 
-# ------------------------------------------------------------
-# 🔧 Konfiguration – bitte anpassen:
-ATHLETE_ID = "i410575"          # deine Athlete-ID
-API_KEY = "3314sysdjt3ni1p8342di5393"  # <-- hier deinen echten API-Key einsetzen
-# ------------------------------------------------------------
+PROXY_TOKEN = "mySuperSecretToken987"
+ATHLETE_ID = "i410575"   # ohne i !
+url = f"https://intervals-icu-proxy-jyrg0phph-renes-projects-6043e5eb.vercel.app/api/icu/athlete/{ATHLETE_ID}/activities?oldest=2025-09-01"
 
-# Auth Header erstellen
-auth_string = f"API_KEY:{API_KEY}"
-auth_b64 = base64.b64encode(auth_string.encode()).decode()
 headers = {
-    "Authorization": f"Basic {auth_b64}",
+    "Authorization": f"Bearer {PROXY_TOKEN}",
     "Accept": "application/json"
 }
 
-# URL (absteigend sortiert, 60 Tage Rückblick)
-url = f"https://intervals.icu/api/v1/athlete/{ATHLETE_ID}/activities?oldest=2025-09-01"
-
 print("➡️ GET", url)
-response = requests.get(url, headers=headers)
+response = requests.get(url, headers=headers, timeout=10)
 
 print("Status:", response.status_code)
 print("Antwort (gekürzt):")
-print(response.text[:])
+print(response.text[:500])
