@@ -1,64 +1,46 @@
-// File: api/icu/[...path].ts
-export const config = { runtime: 'nodejs' };
+// File: api/icu/[...path].js
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+  runtime: "nodejs",
+};
 
-function toBasic(username: string, password: string) {
-  // Edge Runtime hat btoa, aber wir fallbacken robust:
-  try {
-    // @ts-ignore
-    return 'Basic ' + btoa(`${username}:${password}`);
-  } catch {
-    // Node fallback (falls lokal entwickelt)
-    // @ts-ignore
-    return 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
-  }
-}
+import fetch from "node-fetch";
 
-export default async (req: Request) => {
-  const url = new URL(req.url);
-  const upstream = 'https://intervals.icu';
-  // Mappe /api/icu/... -> /api/v1/...
-  const pathAfter = url.pathname.replace(/^\/api\/icu/, '/api/v1');
-  const targetUrl = upstream + pathAfter + (url.search || '');
+export default async function handler(req, res) {
+  const pathParts = req.query.path || [];
+  const upstreamBase = "https://intervals.icu/api/v1";
+  const queryString = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
+  const targetUrl = `${upstreamBase}/${pathParts.join("/")}${queryString}`;
 
-  // Sicherheit: GPT/Client muss ein Token mitsenden
-  const authIn = req.headers.get('authorization') || '';
   const proxyToken = process.env.PROXY_TOKEN;
-  if (!proxyToken || !authIn.startsWith('Bearer ')) {
-    return new Response(JSON.stringify({ error: 'Missing Bearer token' }), { status: 401 });
-  }
-  const supplied = authIn.substring('Bearer '.length).trim();
-  if (supplied !== proxyToken) {
-    return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 403 });
+  const incomingAuth = req.headers["authorization"]?.replace("Bearer ", "").trim();
+
+  if (!proxyToken || incomingAuth !== proxyToken) {
+    return res.status(403).json({ error: "Forbidden: Invalid or missing proxy token" });
   }
 
-  // Intervals Basic-Auth bauen
   const icuKey = process.env.INTERVALS_API_KEY;
   if (!icuKey) {
-    return new Response(JSON.stringify({ error: 'Server not configured: INTERVALS_API_KEY missing' }), { status: 500 });
+    return res.status(500).json({ error: "Server configuration error: missing INTERVALS_API_KEY" });
   }
-  const icuAuth = toBasic('API_KEY', icuKey);
 
-  // Forward request (Body nur bei Nicht-GET)
+  const authHeader = "Basic " + Buffer.from(`API_KEY:${icuKey}`).toString("base64");
+
   const method = req.method.toUpperCase();
-  const body = method === 'GET' || method === 'HEAD' ? undefined : await req.text();
+  const body = method === "POST" || method === "PUT" ? req : null;
 
-  // Content-Type beibehalten oder defaulten
-  const incomingCT = req.headers.get('content-type') || (method === 'GET' ? undefined : 'application/json');
-
-  const resp = await fetch(targetUrl, {
+  const upstreamResponse = await fetch(targetUrl, {
     method,
     headers: {
-      'Authorization': icuAuth,
-      // Leite JSON- oder CSV-Wünsche durch (GPT kann beides anfragen)
-      ...(incomingCT ? { 'Content-Type': incomingCT } : {}),
-      'Accept': req.headers.get('accept') || '*/*',
+      Authorization: authHeader,
+      "Content-Type": req.headers["content-type"] || "application/json",
+      Accept: req.headers["accept"] || "application/json",
     },
-    body
+    body,
   });
 
-  // Direkt streamen
-  const outHeaders = new Headers();
-  const ct = resp.headers.get('content-type') || 'application/json';
-  outHeaders.set('content-type', ct);
-  return new Response(resp.body, { status: resp.status, headers: outHeaders });
-};
+  const upstreamText = await upstreamResponse.text();
+  res.status(upstreamResponse.status).send(upstreamText);
+}
