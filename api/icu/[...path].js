@@ -2,29 +2,38 @@
 export const config = { runtime: "nodejs" };
 
 export default async function handler(req, res) {
-  // Pfadteile aus der Route lesen (catch-all)
+  // Teile der dynamischen Route lesen
   const pathParts = req.query.path || req.query["0"] || [];
+
+  // 🔍 ENV-Check Route
+  if (pathParts[0] === "env-check") {
+    return res.status(200).json({
+      PROXY_TOKEN_SET: !!process.env.PROXY_TOKEN,
+      INTERVALS_API_KEY_SET: !!process.env.INTERVALS_API_KEY,
+    });
+  }
+
   const upstreamBase = "https://intervals.icu/api/v1";
   const query = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
   const targetUrl = `${upstreamBase}/${pathParts.join("/")}${query}`;
 
-  // Proxy-Authentifizierung (externe Sicherheitsschicht)
+  // Externe Proxy-Authentifizierung
   const proxyToken = process.env.PROXY_TOKEN;
   const incomingAuth = req.headers["authorization"]?.replace("Bearer ", "").trim();
+
   if (!proxyToken || incomingAuth !== proxyToken) {
     return res.status(403).json({ error: "Invalid or missing PROXY_TOKEN" });
   }
 
-  // Intervals API-Key (interne Auth)
+  // Intervals API-Key
   const icuKey = process.env.INTERVALS_API_KEY;
   if (!icuKey) {
     return res.status(500).json({ error: "Missing INTERVALS_API_KEY" });
   }
 
-  // Basic Auth Header für Intervals API
   const authHeader = "Basic " + Buffer.from(`API_KEY:${icuKey}`).toString("base64");
 
-  // Optionaler Body (nur bei POST/PUT/PATCH)
+  // Anfrage an Intervals.icu weiterleiten
   const upstreamResponse = await fetch(targetUrl, {
     method: req.method,
     headers: {
@@ -35,7 +44,6 @@ export default async function handler(req, res) {
     body: ["POST", "PUT", "PATCH"].includes(req.method) ? req.body : undefined,
   });
 
-  // Intervals antwortet im Textformat -> direkt durchreichen
   const text = await upstreamResponse.text();
   res.status(upstreamResponse.status).send(text);
 }
