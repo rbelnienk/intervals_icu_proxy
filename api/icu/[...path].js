@@ -1,8 +1,6 @@
 // File: api/icu/[...path].js
 export const config = { runtime: "nodejs" };
 
-import fetch from "node-fetch";
-
 export default async function handler(req, res) {
   const pathParts = req.query.path || [];
   const upstreamBase = "https://intervals.icu/api/v1";
@@ -23,18 +21,14 @@ export default async function handler(req, res) {
 
   const authHeader = "Basic " + Buffer.from(`API_KEY:${icuKey}`).toString("base64");
 
-  const method = req.method;
-  const bodyAllowed = ["POST", "PUT", "PATCH"].includes(method);
-  const body = bodyAllowed ? req : undefined;
-
   const upstreamResponse = await fetch(targetUrl, {
-    method,
+    method: req.method,
     headers: {
       "Authorization": authHeader,
       "Accept": "application/json",
       "Content-Type": req.headers["content-type"] || "application/json",
     },
-    body
+    body: req.method === "GET" ? undefined : req.body,
   });
 
   const text = await upstreamResponse.text();

@@ -3,7 +3,7 @@ import requests
 
 PROXY_TOKEN = "mySuperSecretToken987"
 ATHLETE_ID = "i410575"   # ohne i !
-url = f"https://intervals-icu-proxy-jyrg0phph-renes-projects-6043e5eb.vercel.app/api/icu/athlete/{ATHLETE_ID}/activities?oldest=2025-09-01"
+url = f"https://intervals-icu-proxy.vercel.app/api/icu/athlete/{ATHLETE_ID}/activities?oldest=2025-09-01"
 
 headers = {
     "Authorization": f"Bearer {PROXY_TOKEN}",
