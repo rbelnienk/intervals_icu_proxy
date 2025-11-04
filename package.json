@@ -1,0 +1,9 @@
+{
+  "name": "vercel-env-debugger",
+  "version": "1.0.0",
+  "description": "Serverless utilities for inspecting environment variables on Vercel.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
