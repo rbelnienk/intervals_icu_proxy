@@ -1,13 +1,16 @@
 # Intervals.icu Proxy & Environment Debugger
 
-This project contains two Vercel serverless functions:
+This project contains a lightweight static site and two Vercel serverless functions:
 
+- `index.html`: a client-side activity viewer that prompts for the proxy credentials and athlete ID, then calls the proxy to
+  render the ten most recent activities.
 - `api/icu/[...path].js`: a secure proxy for the [Intervals.icu API](https://intervals.icu/). It adds Basic access control
   (username & password) and handles the required upstream Basic authentication using an API key stored in Vercel environment
   variables.
 - `api/env.js`: a debugging endpoint that makes it easy to confirm which environment variables are defined at runtime.
 
-Both functions run on Vercel's Node.js runtime so they can access `process.env` values.
+The static page is served directly by Vercel, while the functions run on Vercel's Node.js runtime so they can access
+`process.env` values.
 
 ## Environment Variables
 
@@ -33,6 +36,14 @@ Both functions run on Vercel's Node.js runtime so they can access `process.env` 
 3. The proxy forwards allowed headers (`Accept`, `Accept-Encoding`, `Accept-Language`, `Content-Type`, `If-None-Match`,
    `User-Agent`) and streams the upstream response back to the caller.
 4. Visit `/api/icu/env-check` to quickly confirm that the proxy-related environment variables are present.
+
+## Web Activity Viewer (`/`)
+
+- Navigate to the root of the deployment to open the Activity Viewer UI.
+- Enter the proxy username and password configured via `PROXY_BASIC_USER` / `PROXY_BASIC_PASSWORD` along with the Intervals.icu
+  athlete ID you want to inspect.
+- Submit the form to retrieve and render the ten most recent activities. The browser only talks to `/api/icu` on the same
+  deployment, so your Intervals.icu API key stays on the server.
 
 ## Environment Inspector (`/api/env`)
 
