@@ -1,47 +1,52 @@
-# Vercel Environment Debugger
+# Intervals.icu Proxy & Environment Debugger
 
-This project provides a single serverless function that makes it easy to inspect runtime environment variables when the project is deployed to [Vercel](https://vercel.com/).
+This project contains two Vercel serverless functions:
 
-## Features
+- `api/icu/[...path].js`: a secure proxy for the [Intervals.icu API](https://intervals.icu/). It adds token-based access
+  control and handles the required Basic authentication using an API key stored in Vercel environment variables.
+- `api/env.js`: a debugging endpoint that makes it easy to confirm which environment variables are defined at runtime.
 
-- `GET /api/env` returns a JSON payload describing available environment variables.
-- Optional `keys` query parameter (comma separated) lets you explicitly request only the variables you are interested in.
-- Responses include helpful metadata such as whether the variable is defined, empty, and its string length.
-- CORS headers allow you to call the endpoint directly from a browser-based debugging tool. Set `DEBUG_ENV_ALLOWED_ORIGIN` to restrict access.
+Both functions run on Vercel's Node.js runtime so they can access `process.env` values.
 
-## Getting Started
+## Environment Variables
 
-1. Install dependencies (only needed for running tests locally):
+| Name | Required | Description |
+| ---- | -------- | ----------- |
+| `PROXY_TOKEN` | ✅ | Shared secret that callers must send as a `Bearer` token when using the proxy endpoint. |
+| `INTERVALS_API_KEY` | ✅ | API key for the Intervals.icu account you want to call. The proxy converts it to the Basic Auth format required by Intervals.icu. |
+| `INTERVALS_BASE_URL` | optional | Custom base URL for the upstream Intervals.icu API (defaults to `https://intervals.icu/api/v1`). |
+| `DEBUG_ENV_ALLOWED_ORIGIN` | optional | Restricts which browser origin can call `GET /api/env`. |
+
+## Proxy Usage (`/api/icu/*`)
+
+1. Deploy to Vercel with the required environment variables configured.
+2. Call the proxy with the path you want to reach on Intervals.icu. For example, to fetch recent activities:
 
    ```bash
-   npm install
+   curl "https://<your-vercel-domain>/api/icu/athlete/i410575/activities?oldest=2025-01-01" \
+     -H "Authorization: Bearer $PROXY_TOKEN" \
+     -H "Accept: application/json"
    ```
 
-2. Run the automated tests:
+3. The proxy forwards allowed headers (`Accept`, `Accept-Encoding`, `Accept-Language`, `Content-Type`, `If-None-Match`,
+   `User-Agent`) and streams the upstream response back to the caller.
+4. Visit `/api/icu/env-check` to quickly confirm that the proxy-related environment variables are present.
 
-   ```bash
-   npm test
-   ```
+## Environment Inspector (`/api/env`)
 
-3. Deploy to Vercel. The `api/env.js` file is picked up automatically as a serverless function.
+- `GET /api/env` returns a JSON payload describing the available environment variables (excluding common system values).
+- Provide a `keys` query parameter (comma separated) to explicitly request particular variables.
+- If `DEBUG_ENV_ALLOWED_ORIGIN` is set, CORS headers are configured to allow only that browser origin to access the
+  endpoint.
 
-## Usage
+## Local Development
 
-- Fetch all non-system environment variables:
+Install dependencies and run the tests:
 
-  ```bash
-  curl https://<your-vercel-domain>/api/env
-  ```
+```bash
+npm install
+npm test
+```
 
-- Fetch specific variables:
-
-  ```bash
-  curl "https://<your-vercel-domain>/api/env?keys=MY_SECRET,ANOTHER_VAR"
-  ```
-
-- Restrict which origin can access the endpoint by setting the `DEBUG_ENV_ALLOWED_ORIGIN` environment variable.
-
-## Notes
-
-- System-provided variables that start with `NODE_`, `VERCEL_`, `AWS_`, `PATH`, `PWD`, `HOME`, `LANG`, or `SHELL` are excluded from the default response to reduce noise. Request them explicitly with the `keys` query parameter if required.
-- Avoid exposing sensitive secrets publicly. Add your own authentication in front of this endpoint if needed.
+When running locally with `vercel dev` or `npm run dev`, set the required environment variables in a `.env.local` file or
+your shell.
