@@ -70,25 +70,56 @@ function collectForwardHeaders(req) {
   return headers;
 }
 
-export default async function handler(req, res) {
-  const proxyToken = process.env.PROXY_TOKEN;
-  const incomingToken = req.headers["authorization"]
-    ?.replace(/^Bearer\s+/i, "")
-    .trim();
+function readBasicCredentials(headerValue) {
+  if (!headerValue) return null;
 
-  if (!proxyToken) {
-    return res.status(500).json({ error: "Missing PROXY_TOKEN environment variable" });
+  const match = headerValue.match(/^Basic\s+(.+)$/i);
+  if (!match) return null;
+
+  try {
+    const decoded = Buffer.from(match[1], "base64").toString("utf8");
+    const separatorIndex = decoded.indexOf(":");
+    if (separatorIndex === -1) return null;
+
+    return {
+      username: decoded.slice(0, separatorIndex),
+      password: decoded.slice(separatorIndex + 1),
+    };
+  } catch (error) {
+    console.warn("Failed to decode proxy basic credentials", error);
+    return null;
+  }
+}
+
+export default async function handler(req, res) {
+  const expectedUser = process.env.PROXY_BASIC_USER;
+  const expectedPassword = process.env.PROXY_BASIC_PASSWORD;
+
+  if (!expectedUser || !expectedPassword) {
+    return res.status(500).json({ error: "Missing proxy basic auth environment variables" });
   }
 
-  if (incomingToken !== proxyToken) {
-    return res.status(403).json({ error: "Invalid or missing proxy token" });
+  const providedCredentials = readBasicCredentials(req.headers["authorization"]);
+
+  if (!providedCredentials) {
+    res.setHeader("WWW-Authenticate", 'Basic realm="Intervals Proxy"');
+    return res.status(401).json({ error: "Missing proxy credentials" });
+  }
+
+  if (
+    providedCredentials.username !== expectedUser ||
+    providedCredentials.password !== expectedPassword
+  ) {
+    res.setHeader("WWW-Authenticate", 'Basic realm="Intervals Proxy"');
+    return res.status(401).json({ error: "Invalid proxy credentials" });
   }
 
   const pathSegments = getPathSegments(req);
 
   if (pathSegments[0] === "env-check") {
     return res.status(200).json({
-      PROXY_TOKEN_SET: true,
+      PROXY_BASIC_USER_SET: !!expectedUser,
+      PROXY_BASIC_PASSWORD_SET: !!expectedPassword,
       INTERVALS_API_KEY_SET: !!process.env.INTERVALS_API_KEY,
       RUNTIME: "nodejs",
     });

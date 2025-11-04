@@ -2,8 +2,9 @@
 
 This project contains two Vercel serverless functions:
 
-- `api/icu/[...path].js`: a secure proxy for the [Intervals.icu API](https://intervals.icu/). It adds token-based access
-  control and handles the required Basic authentication using an API key stored in Vercel environment variables.
+- `api/icu/[...path].js`: a secure proxy for the [Intervals.icu API](https://intervals.icu/). It adds Basic access control
+  (username & password) and handles the required upstream Basic authentication using an API key stored in Vercel environment
+  variables.
 - `api/env.js`: a debugging endpoint that makes it easy to confirm which environment variables are defined at runtime.
 
 Both functions run on Vercel's Node.js runtime so they can access `process.env` values.
@@ -12,7 +13,8 @@ Both functions run on Vercel's Node.js runtime so they can access `process.env` 
 
 | Name | Required | Description |
 | ---- | -------- | ----------- |
-| `PROXY_TOKEN` | ✅ | Shared secret that callers must send as a `Bearer` token when using the proxy endpoint. |
+| `PROXY_BASIC_USER` | ✅ | Username callers must present via HTTP Basic auth when using the proxy endpoint. |
+| `PROXY_BASIC_PASSWORD` | ✅ | Password callers must present via HTTP Basic auth when using the proxy endpoint. |
 | `INTERVALS_API_KEY` | ✅ | API key for the Intervals.icu account you want to call. The proxy converts it to the Basic Auth format required by Intervals.icu. |
 | `INTERVALS_BASE_URL` | optional | Custom base URL for the upstream Intervals.icu API (defaults to `https://intervals.icu/api/v1`). |
 | `DEBUG_ENV_ALLOWED_ORIGIN` | optional | Restricts which browser origin can call `GET /api/env`. |
@@ -24,7 +26,7 @@ Both functions run on Vercel's Node.js runtime so they can access `process.env` 
 
    ```bash
    curl "https://<your-vercel-domain>/api/icu/athlete/i410575/activities?oldest=2025-01-01" \
-     -H "Authorization: Bearer $PROXY_TOKEN" \
+     -u "$PROXY_BASIC_USER:$PROXY_BASIC_PASSWORD" \
      -H "Accept: application/json"
    ```
 
