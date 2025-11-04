@@ -140,7 +140,16 @@
         </label>
         <label>
           Athlete ID
-          <input type="text" id="athlete-id" name="athleteId" inputmode="numeric" pattern="[0-9]+" required />
+          <input
+            type="text"
+            id="athlete-id"
+            name="athleteId"
+            inputmode="text"
+            pattern="i[0-9]+"
+            placeholder="i123456"
+            required
+            title="Enter the Intervals.icu athlete ID, including the leading 'i'."
+          />
         </label>
         <button type="submit">Load activities</button>
       </form>

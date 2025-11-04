@@ -41,7 +41,7 @@ The static page is served directly by Vercel, while the functions run on Vercel'
 
 - Navigate to the root of the deployment to open the Activity Viewer UI.
 - Enter the proxy username and password configured via `PROXY_BASIC_USER` / `PROXY_BASIC_PASSWORD` along with the Intervals.icu
-  athlete ID you want to inspect.
+  athlete ID (including the leading `i`) you want to inspect.
 - Submit the form to retrieve and render the ten most recent activities. The browser only talks to `/api/icu` on the same
   deployment, so your Intervals.icu API key stays on the server.
 
